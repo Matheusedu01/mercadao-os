@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Mercadão O.S.</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <svg width="24" height="24" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="18" fill="#2D3033" stroke="#F7931E" stroke-width="2.5"/>
+        <text x="20" y="27" text-anchor="middle" font-weight="700" font-size="17" fill="#fff">m</text>
+      </svg>
+      <span>Mercadão O.S.</span>
+    </div>
+    <button id="btn-abrir-site" class="link-topo" title="Abrir sistema completo">Abrir site ↗</button>
+  </header>
+
+  <div id="estado-carregando" class="estado">Carregando...</div>
+
+  <div id="estado-deslogado" class="estado" hidden>
+    <p>Você precisa entrar no sistema primeiro.</p>
+    <button id="btn-login" class="botao botao-principal">Fazer login</button>
+  </div>
+
+  <div id="estado-sem-permissao" class="estado" hidden>
+    <p>Seu papel não tem uma fila de aprovação pra mostrar aqui.</p>
+    <button id="btn-nova-os-2" class="botao botao-principal">Abrir Nova O.S.</button>
+  </div>
+
+  <main id="lista-pendentes" class="lista" hidden></main>
+
+  <template id="modelo-card">
+    <div class="card">
+      <div class="card-topo">
+        <span class="badge badge-prioridade"></span>
+        <span class="numero"></span>
+      </div>
+      <div class="titulo"></div>
+      <div class="loja"></div>
+      <div class="rodape">
+        <span class="valor"></span>
+        <a class="ver-detalhes" target="_blank">Ver detalhes</a>
+      </div>
+      <div class="comentario-wrap" hidden>
+        <textarea class="comentario" placeholder="Motivo (obrigatório)..."></textarea>
+        <div class="acoes-comentario">
+          <button class="botao botao-cancelar">Cancelar</button>
+          <button class="botao botao-rejeitar-confirma">Confirmar rejeição</button>
+        </div>
+      </div>
+      <div class="acoes">
+        <button class="botao botao-rejeitar">Rejeitar</button>
+        <button class="botao botao-aprovar">Aprovar</button>
+      </div>
+    </div>
+  </template>
+
+  <footer class="rodape-popup">
+    <button id="btn-nova-os" class="botao botao-secundario">+ Nova O.S.</button>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

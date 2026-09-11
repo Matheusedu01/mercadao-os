@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# anexos enviados pelos usuarios (fotos/documentos das O.S.) - fica em disco,
+# fora de public/, nunca deve ir pro controle de versao
+/uploads
+
+# logs soltos de dev server rodado em background
+dev-out.log
+dev-err.log

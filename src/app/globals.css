@@ -1,26 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f5f4;
+  --foreground: #1d1e1f;
+
+  /* Identidade visual Mercadão Atacadista */
+  --charcoal: #2d3033;
+  --charcoal-2: #23262a;
+  --charcoal-3: #3a3e42;
+  --orange: #f7931e;
+  --orange-dark: #db7e0a;
+  --orange-tint: #fff1df;
+  --border: #e3e2df;
+  --text-2: #5b5e62;
+  --text-3: #8b8e92;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-charcoal: var(--charcoal);
+  --color-charcoal-2: var(--charcoal-2);
+  --color-charcoal-3: var(--charcoal-3);
+  --color-orange: var(--orange);
+  --color-orange-dark: var(--orange-dark);
+  --color-orange-tint: var(--orange-tint);
+  --color-border: var(--border);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --font-sans: var(--font-public-sans);
+  --font-display: var(--font-sora);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-public-sans), system-ui, sans-serif;
 }

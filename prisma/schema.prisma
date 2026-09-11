@@ -1,0 +1,269 @@
+// Schema do banco de dados
+// Fase 1: Acesso & Permissoes (usuarios, lojas, setores, vinculos de escopo).
+// Fase 2: fluxo de O.S. (ordens_servico, orcamentos, aprovacoes, historico_os).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Papel {
+  solicitante
+  supervisor
+  diretor_dono
+  despesas
+  admin
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senhaHash String   @map("senha_hash")
+  telefone  String?
+  papel     Papel
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  lojasGerenciadas Loja[]         @relation("LojaGerente")
+  setoresSupervisionados Setor[]  @relation("SetorSupervisor")
+  usuarioSetores   UsuarioSetor[]
+  usuarioLojas     UsuarioLoja[]
+
+  ordensSolicitadas OrdemServico[] @relation("OSSolicitante")
+  ordensDespesas    OrdemServico[] @relation("OSDespesas")
+  aprovacoes        Aprovacao[]
+  historicoEventos  HistoricoOS[]
+  anexosEnviados    Anexo[]
+
+  @@map("usuarios")
+}
+
+model Loja {
+  id        String  @id @default(uuid())
+  codigo    String  @unique
+  nome      String
+  endereco  String?
+  cidade    String?
+  uf        String?
+  telefone  String?
+  gerenteId String? @map("gerente_id")
+  gerente   Usuario? @relation("LojaGerente", fields: [gerenteId], references: [id])
+  ativo     Boolean @default(true)
+
+  lojaSetores    LojaSetor[]
+  usuarioLojas   UsuarioLoja[]
+  ordensServico  OrdemServico[]
+
+  @@map("lojas")
+}
+
+model Setor {
+  id             String   @id @default(uuid())
+  nome           String   @unique
+  supervisorId   String?  @map("supervisor_id")
+  supervisor     Usuario? @relation("SetorSupervisor", fields: [supervisorId], references: [id])
+  slaPadraoDias  Int      @default(3) @map("sla_padrao_dias")
+  ativo          Boolean  @default(true)
+
+  lojaSetores    LojaSetor[]
+  usuarioSetores UsuarioSetor[]
+  ordensServico  OrdemServico[]
+
+  @@map("setores")
+}
+
+// Quais setores estao habilitados em cada loja
+model LojaSetor {
+  lojaId  String @map("loja_id")
+  setorId String @map("setor_id")
+  loja    Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  setor   Setor  @relation(fields: [setorId], references: [id], onDelete: Cascade)
+
+  @@id([lojaId, setorId])
+  @@map("loja_setor")
+}
+
+// Escopo: em quais setores aquele usuario (supervisor) atua
+model UsuarioSetor {
+  usuarioId String  @map("usuario_id")
+  setorId   String  @map("setor_id")
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  setor     Setor   @relation(fields: [setorId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, setorId])
+  @@map("usuario_setor")
+}
+
+// Escopo: em quais lojas aquele usuario atua
+model UsuarioLoja {
+  usuarioId String  @map("usuario_id")
+  lojaId    String  @map("loja_id")
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  loja      Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, lojaId])
+  @@map("usuario_loja")
+}
+
+// ---------------------------------------------------------------------
+// Fase 2: fluxo da O.S. (Solicitante -> Supervisor -> Diretor -> Execucao)
+// ---------------------------------------------------------------------
+
+enum TipoOS {
+  obra
+  manutencao
+  despesa
+  outro
+}
+
+enum Prioridade {
+  baixa
+  media
+  alta
+  urgente
+}
+
+// Espelha o stepper de 4 etapas dos mockups.
+enum StatusOS {
+  aguardando_supervisor
+  aguardando_diretoria
+  em_execucao
+  concluido
+  rejeitado
+  ajuste_solicitado
+}
+
+enum EtapaAprovacao {
+  supervisor
+  diretor
+}
+
+enum DecisaoAprovacao {
+  aprovado
+  rejeitado
+  ajuste_solicitado
+}
+
+model OrdemServico {
+  id            String     @id @default(uuid())
+  numero        Int        @unique @default(autoincrement())
+  tipo          TipoOS
+  titulo        String
+  local         String
+  descricao     String
+  prioridade    Prioridade @default(media)
+  status        StatusOS   @default(aguardando_supervisor)
+  dataDesejada  DateTime?  @map("data_desejada")
+
+  lojaId        String   @map("loja_id")
+  loja          Loja     @relation(fields: [lojaId], references: [id])
+  setorId       String   @map("setor_id")
+  setor         Setor    @relation(fields: [setorId], references: [id])
+  solicitanteId String   @map("solicitante_id")
+  solicitante   Usuario  @relation("OSSolicitante", fields: [solicitanteId], references: [id])
+  despesasId    String?  @map("despesas_id")
+  despesas      Usuario? @relation("OSDespesas", fields: [despesasId], references: [id])
+
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  orcamentos Orcamento[]
+  aprovacoes Aprovacao[]
+  historico  HistoricoOS[]
+  anexos     Anexo[]
+
+  @@map("ordens_servico")
+}
+
+// Fotos/documentos livres anexados pelo solicitante ao abrir a O.S. (ex.:
+// foto do problema, orçamento em PDF). Arquivo fica em disco (ver
+// src/lib/anexos.ts) - aqui só guardamos os metadados.
+model Anexo {
+  id             String       @id @default(uuid())
+  ordemServicoId String       @map("ordem_servico_id")
+  ordemServico   OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+  nomeArquivo    String       @map("nome_arquivo")
+  caminhoArquivo String       @map("caminho_arquivo")
+  tipoMime       String       @map("tipo_mime")
+  tamanhoBytes   Int          @map("tamanho_bytes")
+  enviadoPorId   String?      @map("enviado_por_id")
+  enviadoPor     Usuario?     @relation(fields: [enviadoPorId], references: [id])
+  criadoEm       DateTime     @default(now()) @map("criado_em")
+
+  @@map("anexos")
+}
+
+// Fornecedores comparados para a mesma O.S. - a comparacao de orcamentos
+// encontrada no sistema antigo, agora como campos estruturados.
+model Orcamento {
+  id             String       @id @default(uuid())
+  ordemServicoId String       @map("ordem_servico_id")
+  ordemServico   OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+  fornecedor     String
+  valor          Decimal      @db.Decimal(12, 2)
+  parcelas       String       @default("À vista")
+  arquivoPdfUrl  String?      @map("arquivo_pdf_url")
+  selecionado    Boolean      @default(false)
+  criadoEm       DateTime     @default(now()) @map("criado_em")
+
+  @@map("orcamentos")
+}
+
+// Uma linha por decisao tomada em cada etapa (pode haver mais de uma
+// aprovacao de "ajuste_solicitado" no historico antes da aprovacao final).
+model Aprovacao {
+  id             String           @id @default(uuid())
+  ordemServicoId String           @map("ordem_servico_id")
+  ordemServico   OrdemServico     @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+  etapa          EtapaAprovacao
+  aprovadorId    String           @map("aprovador_id")
+  aprovador      Usuario          @relation(fields: [aprovadorId], references: [id])
+  decisao        DecisaoAprovacao
+  comentario     String?
+  decididoEm     DateTime         @default(now()) @map("decidido_em")
+
+  @@map("aprovacoes")
+}
+
+// Timeline completa exibida na tela de detalhe (criacao, decisoes, etc).
+model HistoricoOS {
+  id             String       @id @default(uuid())
+  ordemServicoId String       @map("ordem_servico_id")
+  ordemServico   OrdemServico @relation(fields: [ordemServicoId], references: [id], onDelete: Cascade)
+  tipoEvento     String       @map("tipo_evento")
+  autorId        String?      @map("autor_id")
+  autor          Usuario?     @relation(fields: [autorId], references: [id])
+  descricao      String
+  criadoEm       DateTime     @default(now()) @map("criado_em")
+
+  @@map("historico_os")
+}
+
+// ---------------------------------------------------------------------
+// Fase 3: configuracoes gerais (tela Configuracoes)
+// ---------------------------------------------------------------------
+
+model SlaPrioridade {
+  prioridade Prioridade @id
+  dias       Int
+
+  @@map("sla_prioridade")
+}
+
+// Linha unica de configuracoes do sistema (sempre id = "default").
+// As opcoes de WhatsApp/e-mail ficam guardadas aqui desde ja, mas so
+// passam a enviar mensagem de verdade quando a Fase 4 for implementada.
+model ConfigSistema {
+  id                         String  @id @default("default")
+  lembreteWhatsappAtivo      Boolean @default(true) @map("lembrete_whatsapp_ativo")
+  lembreteWhatsappDias       Int     @default(3) @map("lembrete_whatsapp_dias")
+  notificacaoEmailAtivo      Boolean @default(true) @map("notificacao_email_ativo")
+  resumoDiarioDiretoriaAtivo Boolean @default(false) @map("resumo_diario_diretoria_ativo")
+
+  @@map("config_sistema")
+}
