@@ -12,7 +12,7 @@ export function Logo({ size = 36 }: { size?: number }) {
           fontSize="17"
           fill="#FFFFFF"
         >
-          m
+          M
         </text>
       </svg>
       <div className="flex flex-col leading-tight">
