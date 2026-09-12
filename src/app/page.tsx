@@ -7,6 +7,7 @@ import { formatarMoeda } from "@/lib/formato";
 import { OSLista } from "@/components/os-lista";
 import { PainelNav } from "@/components/painel-nav";
 import { FiltroLojaSelect } from "@/components/filtro-loja-select";
+import { ordenarPorCodigo } from "@/lib/lojas";
 import type { Prisma, Prioridade } from "@/generated/prisma/client";
 
 const SELECT_LISTA = {
@@ -152,11 +153,12 @@ export default async function Home({
   const podeFiltrarPorLoja =
     usuario.papel === "supervisor" || usuario.papel === "diretor_dono" || usuario.papel === "despesas";
   const lojasParaFiltro = podeFiltrarPorLoja
-    ? await prisma.loja.findMany({
-        where: { ativo: true },
-        orderBy: { nome: "asc" },
-        select: { id: true, nome: true, codigo: true },
-      })
+    ? ordenarPorCodigo(
+        await prisma.loja.findMany({
+          where: { ativo: true },
+          select: { id: true, nome: true, codigo: true },
+        }),
+      )
     : [];
 
   const itensSupervisor =

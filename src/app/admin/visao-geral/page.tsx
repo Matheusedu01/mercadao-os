@@ -10,6 +10,7 @@ import {
 } from "@/lib/formato";
 import { estaVencida, obterSlaPorPrioridade } from "@/lib/sla";
 import { FiltroLojaSelect } from "@/components/filtro-loja-select";
+import { ordenarPorCodigo } from "@/lib/lojas";
 import type { StatusOS } from "@/generated/prisma/enums";
 
 export const metadata: Metadata = { title: "Visão Geral — Mercadão O.S." };
@@ -24,14 +25,13 @@ export default async function VisaoGeralPage({
   const { setor: setorId, status, loja: lojaId } = await searchParams;
   const ehFiltroVencidas = status === "vencida";
 
-  const [setores, lojas, slaPorPrioridade, ordensBrutas, totalVencidas] = await Promise.all([
+  const [setores, lojasBrutas, slaPorPrioridade, ordensBrutas, totalVencidas] = await Promise.all([
     prisma.setor.findMany({
       orderBy: { nome: "asc" },
       select: { id: true, nome: true, _count: { select: { ordensServico: true } } },
     }),
     prisma.loja.findMany({
       where: { ativo: true },
-      orderBy: { nome: "asc" },
       select: { id: true, nome: true, codigo: true },
     }),
     obterSlaPorPrioridade(),
@@ -62,6 +62,7 @@ export default async function VisaoGeralPage({
       select: { status: true, criadoEm: true, prioridade: true },
     }),
   ]);
+  const lojas = ordenarPorCodigo(lojasBrutas);
 
   const ordens = ehFiltroVencidas
     ? ordensBrutas.filter((os) => estaVencida(os, slaPorPrioridade, os.prioridade))

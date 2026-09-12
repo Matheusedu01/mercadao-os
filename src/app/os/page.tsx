@@ -7,6 +7,7 @@ import { STATUS_LABEL } from "@/lib/formato";
 import { OSLista } from "@/components/os-lista";
 import { PainelNav } from "@/components/painel-nav";
 import { FiltroLojaSelect } from "@/components/filtro-loja-select";
+import { ordenarPorCodigo } from "@/lib/lojas";
 import type { Prisma, Prioridade, StatusOS } from "@/generated/prisma/client";
 
 export const metadata: Metadata = { title: "Todas as O.S. — Mercadão O.S." };
@@ -65,7 +66,7 @@ export default async function TodasOSPage({
     ...(loja && { lojaId: loja }),
   };
 
-  const [itens, lojasParaFiltro] = await Promise.all([
+  const [itens, lojas] = await Promise.all([
     prisma.ordemServico.findMany({
       where,
       orderBy: { criadoEm: "desc" },
@@ -74,10 +75,10 @@ export default async function TodasOSPage({
     }),
     prisma.loja.findMany({
       where: { ativo: true },
-      orderBy: { nome: "asc" },
       select: { id: true, nome: true, codigo: true },
     }),
   ]);
+  const lojasParaFiltro = ordenarPorCodigo(lojas);
 
   const contexto =
     usuario.papel === "diretor_dono" || usuario.papel === "despesas"

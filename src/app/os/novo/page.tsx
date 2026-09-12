@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUsuarioAtual } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { PainelNav } from "@/components/painel-nav";
+import { ordenarPorCodigo } from "@/lib/lojas";
 import { NovaOSForm } from "./nova-os-form";
 
 export const metadata: Metadata = { title: "Abrir Nova O.S. — Mercadão O.S." };
@@ -13,15 +14,17 @@ export default async function NovaOSPage() {
 
   const lojaIds = usuario.usuarioLojas.map((ul) => ul.loja.id);
 
-  const lojas = await prisma.loja.findMany({
-    where: { id: { in: lojaIds }, ativo: true },
-    select: {
-      id: true,
-      nome: true,
-      codigo: true,
-      lojaSetores: { select: { setor: { select: { id: true, nome: true } } } },
-    },
-  });
+  const lojas = ordenarPorCodigo(
+    await prisma.loja.findMany({
+      where: { id: { in: lojaIds }, ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+        lojaSetores: { select: { setor: { select: { id: true, nome: true } } } },
+      },
+    }),
+  );
 
   const setoresPorLoja: Record<string, { id: string; nome: string }[]> = {};
   for (const loja of lojas) {

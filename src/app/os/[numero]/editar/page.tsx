@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getUsuarioAtual } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { podeVerOS } from "@/lib/os-permissoes";
+import { ordenarPorCodigo } from "@/lib/lojas";
 import { PainelNav } from "@/components/painel-nav";
 import { editarOS } from "@/app/os/actions";
 import { EditarOSForm } from "./editar-os-form";
@@ -37,16 +38,17 @@ export default async function EditarOSPage({
   // Qualquer loja da rede pode aparecer aqui - editar serve justamente pra
   // corrigir erro de cadastro (ex.: loja errada selecionada na abertura),
   // então não faz sentido restringir a lista às lojas do editor.
-  const lojas = await prisma.loja.findMany({
-    where: { ativo: true },
-    orderBy: { nome: "asc" },
-    select: {
-      id: true,
-      nome: true,
-      codigo: true,
-      lojaSetores: { select: { setor: { select: { id: true, nome: true } } } },
-    },
-  });
+  const lojas = ordenarPorCodigo(
+    await prisma.loja.findMany({
+      where: { ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+        lojaSetores: { select: { setor: { select: { id: true, nome: true } } } },
+      },
+    }),
+  );
 
   const setoresPorLoja: Record<string, { id: string; nome: string }[]> = {};
   for (const loja of lojas) {
