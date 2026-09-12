@@ -108,11 +108,11 @@ async function main() {
   });
 
   const solicitante = await prisma.usuario.upsert({
-    where: { email: "rafael.souza@mercadao.com" },
+    where: { email: "testeloja@mercadao.com" },
     update: {},
     create: {
-      nome: "Rafael Souza",
-      email: "rafael.souza@mercadao.com",
+      nome: "Teste Loja",
+      email: "testeloja@mercadao.com",
       senhaHash,
       papel: "solicitante",
       telefone: "11999990001",
@@ -131,11 +131,11 @@ async function main() {
   };
 
   const supervisor = await prisma.usuario.upsert({
-    where: { email: "marcos.cunha@mercadao.com" },
+    where: { email: "testesupervisor@mercadao.com" },
     update: escopoRedeCompleta,
     create: {
-      nome: "Marcos Cunha",
-      email: "marcos.cunha@mercadao.com",
+      nome: "Teste Supervisor",
+      email: "testesupervisor@mercadao.com",
       senhaHash,
       papel: "supervisor",
       telefone: "11999990002",
@@ -149,11 +149,11 @@ async function main() {
   });
 
   const diretor = await prisma.usuario.upsert({
-    where: { email: "eduardo.pereira@mercadao.com" },
+    where: { email: "testediretor@mercadao.com" },
     update: escopoRedeCompleta,
     create: {
-      nome: "Eduardo Pereira",
-      email: "eduardo.pereira@mercadao.com",
+      nome: "Teste Diretor",
+      email: "testediretor@mercadao.com",
       senhaHash,
       papel: "diretor_dono",
       telefone: "11999990003",
@@ -166,11 +166,11 @@ async function main() {
   // Despesas (financeiro) fecha a O.S. quando a nota do fornecedor chega -
   // escopo é sempre rede completa, não faz sentido restringir por setor.
   const despesas = await prisma.usuario.upsert({
-    where: { email: "joao.pedro@mercadao.com" },
+    where: { email: "testedespesas@mercadao.com" },
     update: escopoRedeCompleta,
     create: {
-      nome: "João Pedro",
-      email: "joao.pedro@mercadao.com",
+      nome: "Teste Despesas",
+      email: "testedespesas@mercadao.com",
       senhaHash,
       papel: "despesas",
       telefone: "11999990004",
@@ -212,10 +212,10 @@ async function main() {
 
   console.log("Seed concluído. Usuários criados (senha para todos: %s):", SENHA_PADRAO);
   console.log(`  admin        -> ${admin.email}`);
-  console.log(`  solicitante  -> ${solicitante.email}`);
-  console.log(`  supervisor   -> ${supervisor.email}`);
-  console.log(`  diretor/dono -> ${diretor.email}`);
-  console.log(`  despesas     -> ${despesas.email}`);
+  console.log(`  solicitante (loja) -> ${solicitante.email}`);
+  console.log(`  supervisor         -> ${supervisor.email}`);
+  console.log(`  diretor/dono       -> ${diretor.email}`);
+  console.log(`  despesas           -> ${despesas.email}`);
 }
 
 main()

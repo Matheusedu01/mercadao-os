@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { STATUS_LABEL } from "@/lib/formato";
 import { OSLista } from "@/components/os-lista";
 import { PainelNav } from "@/components/painel-nav";
+import { FiltroLojaSelect } from "@/components/filtro-loja-select";
 import type { Prisma, Prioridade, StatusOS } from "@/generated/prisma/client";
 
 export const metadata: Metadata = { title: "Todas as O.S. — Mercadão O.S." };
@@ -44,34 +45,47 @@ function chipClasse(ativo: boolean) {
 export default async function TodasOSPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; prioridade?: string; busca?: string }>;
+  searchParams: Promise<{ status?: string; prioridade?: string; busca?: string; loja?: string }>;
 }) {
   const usuario = await getUsuarioAtual();
   if (usuario.papel === "admin") redirect("/admin/visao-geral");
-  if (usuario.papel !== "supervisor" && usuario.papel !== "diretor_dono") redirect("/");
+  if (
+    usuario.papel !== "supervisor" &&
+    usuario.papel !== "diretor_dono" &&
+    usuario.papel !== "despesas"
+  )
+    redirect("/");
 
-  const { status = "", prioridade = "", busca = "" } = await searchParams;
+  const { status = "", prioridade = "", busca = "", loja = "" } = await searchParams;
 
   const where: Prisma.OrdemServicoWhereInput = {
     ...(status && { status: status as StatusOS }),
     ...(prioridade && { prioridade: prioridade as Prioridade }),
     ...(busca && { titulo: { contains: busca, mode: "insensitive" } }),
+    ...(loja && { lojaId: loja }),
   };
 
-  const itens = await prisma.ordemServico.findMany({
-    where,
-    orderBy: { criadoEm: "desc" },
-    select: SELECT_LISTA,
-    take: 200,
-  });
+  const [itens, lojasParaFiltro] = await Promise.all([
+    prisma.ordemServico.findMany({
+      where,
+      orderBy: { criadoEm: "desc" },
+      select: SELECT_LISTA,
+      take: 200,
+    }),
+    prisma.loja.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true, codigo: true },
+    }),
+  ]);
 
   const contexto =
-    usuario.papel === "diretor_dono"
+    usuario.papel === "diretor_dono" || usuario.papel === "despesas"
       ? "Rede completa"
       : usuario.usuarioSetores.map((us) => us.setor.nome).join(", ") || "—";
 
   const query = (novos: Record<string, string>) =>
-    `/os?${new URLSearchParams({ status, prioridade, busca, ...novos }).toString()}`;
+    `/os?${new URLSearchParams({ status, prioridade, busca, loja, ...novos }).toString()}`;
 
   return (
     <div className="flex min-h-screen flex-col bg-background sm:flex-row">
@@ -103,9 +117,11 @@ export default async function TodasOSPage({
                 {p.label}
               </Link>
             ))}
+            <FiltroLojaSelect lojas={lojasParaFiltro} valor={loja} />
             <form method="GET" className="ml-auto flex items-center gap-2">
               <input type="hidden" name="status" value={status} />
               <input type="hidden" name="prioridade" value={prioridade} />
+              <input type="hidden" name="loja" value={loja} />
               <input
                 type="search"
                 name="busca"

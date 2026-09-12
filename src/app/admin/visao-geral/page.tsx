@@ -9,6 +9,7 @@ import {
   STATUS_LABEL,
 } from "@/lib/formato";
 import { estaVencida, obterSlaPorPrioridade } from "@/lib/sla";
+import { FiltroLojaSelect } from "@/components/filtro-loja-select";
 import type { StatusOS } from "@/generated/prisma/enums";
 
 export const metadata: Metadata = { title: "Visão Geral — Mercadão O.S." };
@@ -18,20 +19,26 @@ const STATUS_PENDENTES: StatusOS[] = ["aguardando_supervisor", "aguardando_diret
 export default async function VisaoGeralPage({
   searchParams,
 }: {
-  searchParams: Promise<{ setor?: string; status?: string }>;
+  searchParams: Promise<{ setor?: string; status?: string; loja?: string }>;
 }) {
-  const { setor: setorId, status } = await searchParams;
+  const { setor: setorId, status, loja: lojaId } = await searchParams;
   const ehFiltroVencidas = status === "vencida";
 
-  const [setores, slaPorPrioridade, ordensBrutas, totalVencidas] = await Promise.all([
+  const [setores, lojas, slaPorPrioridade, ordensBrutas, totalVencidas] = await Promise.all([
     prisma.setor.findMany({
       orderBy: { nome: "asc" },
       select: { id: true, nome: true, _count: { select: { ordensServico: true } } },
+    }),
+    prisma.loja.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true, codigo: true },
     }),
     obterSlaPorPrioridade(),
     prisma.ordemServico.findMany({
       where: {
         setorId: setorId || undefined,
+        lojaId: lojaId || undefined,
         ...(ehFiltroVencidas
           ? { status: { in: STATUS_PENDENTES } }
           : { status: (status as StatusOS) || undefined }),
@@ -70,6 +77,7 @@ export default async function VisaoGeralPage({
     const usp = new URLSearchParams();
     if (params.setor) usp.set("setor", params.setor);
     if (params.status) usp.set("status", params.status);
+    if (params.loja) usp.set("loja", params.loja);
     const qs = usp.toString();
     return `/admin/visao-geral${qs ? `?${qs}` : ""}`;
   };
@@ -91,9 +99,9 @@ export default async function VisaoGeralPage({
         </Link>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
         <Link
-          href={linkFiltro({ setor: setorId, status: ehFiltroVencidas ? undefined : "vencida" })}
+          href={linkFiltro({ setor: setorId, loja: lojaId, status: ehFiltroVencidas ? undefined : "vencida" })}
           className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold ${
             ehFiltroVencidas
               ? "border-[#B91C1C] bg-[#FDEAEA] text-[#B91C1C]"
@@ -114,7 +122,7 @@ export default async function VisaoGeralPage({
         ).map((s) => (
           <Link
             key={s}
-            href={linkFiltro({ setor: setorId, status: status === s ? undefined : s })}
+            href={linkFiltro({ setor: setorId, loja: lojaId, status: status === s ? undefined : s })}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${
               status === s ? STATUS_COR[s] : "bg-white text-text-2"
             } border border-border`}
@@ -122,6 +130,9 @@ export default async function VisaoGeralPage({
             {STATUS_LABEL[s]}
           </Link>
         ))}
+        <div className="ml-auto">
+          <FiltroLojaSelect lojas={lojas} valor={lojaId ?? ""} />
+        </div>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[220px_1fr] gap-5">
@@ -130,7 +141,7 @@ export default async function VisaoGeralPage({
             SETORES
           </span>
           <Link
-            href={linkFiltro({ setor: undefined, status })}
+            href={linkFiltro({ setor: undefined, loja: lojaId, status })}
             className={`flex items-center justify-between rounded-[8px] px-3 py-2 text-xs ${
               !setorId ? "bg-orange-tint font-bold text-orange-dark" : "text-text-2"
             }`}
@@ -141,7 +152,7 @@ export default async function VisaoGeralPage({
           {setores.map((s) => (
             <Link
               key={s.id}
-              href={linkFiltro({ setor: setorId === s.id ? undefined : s.id, status })}
+              href={linkFiltro({ setor: setorId === s.id ? undefined : s.id, loja: lojaId, status })}
               className={`flex items-center justify-between rounded-[8px] px-3 py-2 text-xs ${
                 setorId === s.id ? "bg-orange-tint font-bold text-orange-dark" : "text-text-2"
               }`}

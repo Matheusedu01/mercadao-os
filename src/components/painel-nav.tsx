@@ -29,7 +29,10 @@ const ITENS_POR_PAPEL: Record<Exclude<Papel, "admin">, ItemNav[]> = {
     { href: "/os", label: "Todas as O.S." },
     { href: "/relatorios", label: "Relatórios" },
   ],
-  despesas: [{ href: "/", label: "Fechamento de Despesas" }],
+  despesas: [
+    { href: "/", label: "Fechamento de Despesas" },
+    { href: "/os", label: "Todas as O.S." },
+  ],
 };
 
 export function PainelNav({

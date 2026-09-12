@@ -99,10 +99,17 @@ export default async function DetalheOSPage({
       )}
       <div className="min-w-0 flex-1 overflow-x-auto">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-          <div>
+          <div className="flex items-center justify-between">
             <Link href="/" className="text-xs font-semibold text-text-2 hover:text-orange-dark">
               ← Voltar
             </Link>
+            <Link
+              href={`/os/${os.numero}/editar`}
+              className="rounded-[8px] border border-border px-3 py-1.5 text-xs font-semibold text-text-2 hover:border-orange hover:text-orange-dark"
+            >
+              Editar O.S.
+            </Link>
+          </div>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-xl font-bold text-foreground">
             #{os.numero} · {os.titulo}
@@ -116,7 +123,6 @@ export default async function DetalheOSPage({
             {PRIORIDADE_LABEL[os.prioridade]}
           </span>
         </div>
-      </div>
 
       {/* Stepper */}
       <div className="rounded-2xl border border-border bg-white p-6">
@@ -219,10 +225,20 @@ export default async function DetalheOSPage({
           )}
 
           {podeConcluir && (
-            <form action={marcarConcluido.bind(null, os.numero)}>
+            <form
+              action={marcarConcluido.bind(null, os.numero)}
+              className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-6"
+            >
+              <h2 className="font-display text-sm font-bold">Fechamento de despesa</h2>
+              <textarea
+                name="comentario"
+                rows={3}
+                placeholder="Nota do fechamento (ex.: número da nota fiscal, valor pago, observações)..."
+                className="rounded-[9px] border border-border px-3 py-2.5 text-sm outline-none focus:border-orange"
+              />
               <button
                 type="submit"
-                className="rounded-[10px] bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white hover:opacity-90"
+                className="self-start rounded-[10px] bg-green-600 px-5 py-2.5 font-display text-sm font-semibold text-white hover:opacity-90"
               >
                 Marcar como concluída
               </button>

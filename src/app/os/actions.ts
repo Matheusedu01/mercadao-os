@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getUsuarioAtual } from "@/lib/dal";
 import { executarDecisao } from "@/lib/os-decisao";
 import { salvarAnexo, TAMANHO_MAXIMO_BYTES, TIPOS_ACEITOS } from "@/lib/anexos";
+import { podeVerOS } from "@/lib/os-permissoes";
 
 const CriarOSSchema = z.object({
   tipo: z.enum(["obra", "manutencao", "despesa", "outro"]),
@@ -187,7 +188,7 @@ export async function decidirAprovacao(
   return undefined;
 }
 
-export async function marcarConcluido(osNumero: number) {
+export async function marcarConcluido(osNumero: number, formData: FormData) {
   const usuario = await getUsuarioAtual();
   if (usuario.papel !== "despesas" && usuario.papel !== "admin") {
     throw new Error("Apenas Despesas ou o admin podem concluir uma O.S.");
@@ -197,6 +198,9 @@ export async function marcarConcluido(osNumero: number) {
   if (!os || os.status !== "em_execucao") {
     throw new Error("Esta O.S. não está em execução.");
   }
+
+  const comentario = String(formData.get("comentario") ?? "").trim() || undefined;
+  const descricaoEvento = "conferiu a despesa e marcou a O.S. como concluída";
 
   await prisma.$transaction([
     prisma.ordemServico.update({
@@ -208,13 +212,122 @@ export async function marcarConcluido(osNumero: number) {
         ordemServicoId: os.id,
         tipoEvento: "concluido",
         autorId: usuario.id,
-        descricao: `${usuario.nome} conferiu a despesa e marcou a O.S. como concluída`,
+        descricao: comentario
+          ? `${usuario.nome} ${descricaoEvento}: "${comentario}"`
+          : `${usuario.nome} ${descricaoEvento}`,
       },
     }),
   ]);
 
   revalidatePath(`/os/${osNumero}`);
   revalidatePath("/");
+}
+
+export type EditarOSState = { erro?: string } | undefined;
+
+export async function editarOS(
+  osNumero: number,
+  _prevState: EditarOSState,
+  formData: FormData,
+): Promise<EditarOSState> {
+  const usuario = await getUsuarioAtual();
+
+  const os = await prisma.ordemServico.findUnique({ where: { numero: osNumero } });
+  if (!os) {
+    return { erro: "O.S. não encontrada." };
+  }
+  // Mesma regra de visibilidade da tela de detalhe - qualquer papel que
+  // pode ver a O.S. pode corrigir um erro de cadastro nela.
+  if (!podeVerOS(usuario, os)) {
+    return { erro: "Você não tem permissão para editar esta O.S." };
+  }
+
+  const validado = CriarOSSchema.safeParse({
+    tipo: formData.get("tipo"),
+    lojaId: formData.get("lojaId"),
+    setorId: formData.get("setorId"),
+    local: formData.get("local"),
+    descricao: formData.get("descricao"),
+    prioridade: formData.get("prioridade"),
+    dataDesejada: formData.get("dataDesejada") || undefined,
+  });
+  if (!validado.success) {
+    return { erro: validado.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const fornecedores = formData.getAll("fornecedor").map((v) => String(v).trim());
+  const valores = formData.getAll("valor").map((v) => String(v).trim());
+  const parcelasLista = formData.getAll("parcelas").map((v) => String(v).trim());
+
+  const orcamentos = fornecedores
+    .map((fornecedor, i) => ({
+      fornecedor,
+      valor: valores[i],
+      parcelas: parcelasLista[i] || "À vista",
+    }))
+    .filter((o) => o.fornecedor && o.valor);
+
+  if (orcamentos.length === 0) {
+    return { erro: "Anexe pelo menos um orçamento de fornecedor." };
+  }
+
+  const valoresInvalidos = orcamentos.some(
+    (o) => Number.isNaN(Number(o.valor)) || Number(o.valor) <= 0,
+  );
+  if (valoresInvalidos) {
+    return { erro: "Confira os valores dos orçamentos — precisam ser números maiores que zero." };
+  }
+
+  const loja = await prisma.loja.findUnique({ where: { id: validado.data.lojaId } });
+  if (!loja) {
+    return { erro: "Loja inválida." };
+  }
+
+  const motivoEdicao = String(formData.get("motivoEdicao") ?? "").trim() || undefined;
+  const titulo = `${loja.codigo}-${orcamentos[0].fornecedor.toUpperCase()}-${validado.data.local.toUpperCase()}`;
+
+  await prisma.$transaction([
+    prisma.ordemServico.update({
+      where: { id: os.id },
+      data: {
+        tipo: validado.data.tipo,
+        titulo,
+        local: validado.data.local,
+        descricao: validado.data.descricao,
+        prioridade: validado.data.prioridade,
+        lojaId: validado.data.lojaId,
+        setorId: validado.data.setorId,
+        dataDesejada: validado.data.dataDesejada
+          ? new Date(validado.data.dataDesejada)
+          : null,
+      },
+    }),
+    prisma.orcamento.deleteMany({ where: { ordemServicoId: os.id } }),
+    prisma.orcamento.createMany({
+      data: orcamentos.map((o, i) => ({
+        ordemServicoId: os.id,
+        fornecedor: o.fornecedor,
+        valor: o.valor,
+        parcelas: o.parcelas,
+        selecionado: i === 0,
+      })),
+    }),
+    prisma.historicoOS.create({
+      data: {
+        ordemServicoId: os.id,
+        tipoEvento: "editado",
+        autorId: usuario.id,
+        descricao: motivoEdicao
+          ? `${usuario.nome} editou a O.S.: "${motivoEdicao}"`
+          : `${usuario.nome} editou a O.S.`,
+      },
+    }),
+  ]);
+
+  revalidatePath(`/os/${osNumero}`);
+  revalidatePath("/");
+  revalidatePath("/os");
+  redirect(`/os/${osNumero}`);
 }
 
 export async function reenviarParaAprovacao(osNumero: number) {

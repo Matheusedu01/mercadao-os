@@ -6,6 +6,7 @@ import { PAPEL_LABEL } from "@/lib/papel";
 import { formatarMoeda } from "@/lib/formato";
 import { OSLista } from "@/components/os-lista";
 import { PainelNav } from "@/components/painel-nav";
+import { FiltroLojaSelect } from "@/components/filtro-loja-select";
 import type { Prisma, Prioridade } from "@/generated/prisma/client";
 
 const SELECT_LISTA = {
@@ -57,16 +58,16 @@ function chipClasse(ativo: boolean) {
   }`;
 }
 
-async function obterMetricasSolicitante(solicitanteId: string, inicioMes: Date) {
+async function obterMetricasSolicitante(lojaIds: string[], inicioMes: Date) {
   const [aguardando, emExecucao, concluidasEsteMes, ajuste] = await Promise.all([
     prisma.ordemServico.count({
-      where: { solicitanteId, status: { in: ["aguardando_supervisor", "aguardando_diretoria"] } },
+      where: { lojaId: { in: lojaIds }, status: { in: ["aguardando_supervisor", "aguardando_diretoria"] } },
     }),
-    prisma.ordemServico.count({ where: { solicitanteId, status: "em_execucao" } }),
+    prisma.ordemServico.count({ where: { lojaId: { in: lojaIds }, status: "em_execucao" } }),
     prisma.ordemServico.count({
-      where: { solicitanteId, status: "concluido", atualizadoEm: { gte: inicioMes } },
+      where: { lojaId: { in: lojaIds }, status: "concluido", atualizadoEm: { gte: inicioMes } },
     }),
-    prisma.ordemServico.count({ where: { solicitanteId, status: "ajuste_solicitado" } }),
+    prisma.ordemServico.count({ where: { lojaId: { in: lojaIds }, status: "ajuste_solicitado" } }),
   ]);
   return { aguardando, emExecucao, concluidasEsteMes, ajuste };
 }
@@ -130,19 +131,33 @@ function CampoBusca({ busca, camposOcultos }: { busca: string; camposOcultos?: R
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; prioridade?: string; busca?: string }>;
+  searchParams: Promise<{ status?: string; prioridade?: string; busca?: string; loja?: string }>;
 }) {
   const usuario = await getUsuarioAtual();
   if (usuario.papel === "admin") redirect("/admin/visao-geral");
   const setorIds = usuario.usuarioSetores.map((us) => us.setor.id);
+  const lojaIds = usuario.usuarioLojas.map((ul) => ul.loja.id);
 
-  const { status = "", prioridade = "", busca = "" } = await searchParams;
+  const { status = "", prioridade = "", busca = "", loja = "" } = await searchParams;
   const filtroBusca: Prisma.OrdemServicoWhereInput = busca
     ? { titulo: { contains: busca, mode: "insensitive" } }
     : {};
   const filtroPrioridade: Prisma.OrdemServicoWhereInput = prioridade
     ? { prioridade: prioridade as Prioridade }
     : {};
+  const filtroLoja: Prisma.OrdemServicoWhereInput = loja ? { lojaId: loja } : {};
+
+  // Filtro de loja só faz sentido pra quem enxerga a rede inteira - o
+  // solicitante já é travado nas lojas do próprio login (ver lojaIds acima).
+  const podeFiltrarPorLoja =
+    usuario.papel === "supervisor" || usuario.papel === "diretor_dono" || usuario.papel === "despesas";
+  const lojasParaFiltro = podeFiltrarPorLoja
+    ? await prisma.loja.findMany({
+        where: { ativo: true },
+        orderBy: { nome: "asc" },
+        select: { id: true, nome: true, codigo: true },
+      })
+    : [];
 
   const itensSupervisor =
     usuario.papel === "supervisor"
@@ -152,6 +167,7 @@ export default async function Home({
             setorId: { in: setorIds },
             ...filtroPrioridade,
             ...filtroBusca,
+            ...filtroLoja,
           },
           orderBy: { criadoEm: "asc" },
           select: SELECT_LISTA,
@@ -161,7 +177,7 @@ export default async function Home({
   const itensDiretor =
     usuario.papel === "diretor_dono"
       ? await prisma.ordemServico.findMany({
-          where: { status: "aguardando_diretoria", ...filtroPrioridade, ...filtroBusca },
+          where: { status: "aguardando_diretoria", ...filtroPrioridade, ...filtroBusca, ...filtroLoja },
           orderBy: { criadoEm: "asc" },
           select: SELECT_LISTA,
         })
@@ -170,7 +186,7 @@ export default async function Home({
   const itensDespesas =
     usuario.papel === "despesas"
       ? await prisma.ordemServico.findMany({
-          where: { status: "em_execucao", ...filtroBusca },
+          where: { status: "em_execucao", ...filtroBusca, ...filtroLoja },
           orderBy: { criadoEm: "asc" },
           select: SELECT_LISTA,
         })
@@ -187,7 +203,7 @@ export default async function Home({
   const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
 
   const metricasSolicitante =
-    usuario.papel === "solicitante" ? await obterMetricasSolicitante(usuario.id, inicioMes) : null;
+    usuario.papel === "solicitante" ? await obterMetricasSolicitante(lojaIds, inicioMes) : null;
 
   const metricasSupervisor =
     usuario.papel === "supervisor" && itensSupervisor
@@ -272,9 +288,9 @@ export default async function Home({
                 <CampoBusca busca={busca} camposOcultos={{ status }} />
               </div>
               <OSLista
-                titulo="Minhas O.S."
+                titulo="O.S. da loja"
                 itens={await prisma.ordemServico.findMany({
-                  where: { solicitanteId: usuario.id, ...statusPorFiltro(status), ...filtroBusca },
+                  where: { lojaId: { in: lojaIds }, ...statusPorFiltro(status), ...filtroBusca },
                   orderBy: { criadoEm: "desc" },
                   select: SELECT_LISTA,
                 })}
@@ -305,13 +321,14 @@ export default async function Home({
                 {PRIORIDADES.map((p) => (
                   <Link
                     key={p.valor}
-                    href={`/?${new URLSearchParams({ ...(p.valor && { prioridade: p.valor }), ...(busca && { busca }) }).toString()}`}
+                    href={`/?${new URLSearchParams({ ...(p.valor && { prioridade: p.valor }), ...(busca && { busca }), ...(loja && { loja }) }).toString()}`}
                     className={chipClasse(prioridade === p.valor)}
                   >
                     {p.label}
                   </Link>
                 ))}
-                <CampoBusca busca={busca} camposOcultos={{ prioridade }} />
+                <FiltroLojaSelect lojas={lojasParaFiltro} valor={loja} />
+                <CampoBusca busca={busca} camposOcultos={{ prioridade, loja }} />
               </div>
               <OSLista
                 titulo="Fila de Aprovação — Supervisor"
@@ -344,13 +361,14 @@ export default async function Home({
                 {PRIORIDADES.map((p) => (
                   <Link
                     key={p.valor}
-                    href={`/?${new URLSearchParams({ ...(p.valor && { prioridade: p.valor }), ...(busca && { busca }) }).toString()}`}
+                    href={`/?${new URLSearchParams({ ...(p.valor && { prioridade: p.valor }), ...(busca && { busca }), ...(loja && { loja }) }).toString()}`}
                     className={chipClasse(prioridade === p.valor)}
                   >
                     {p.label}
                   </Link>
                 ))}
-                <CampoBusca busca={busca} camposOcultos={{ prioridade }} />
+                <FiltroLojaSelect lojas={lojasParaFiltro} valor={loja} />
+                <CampoBusca busca={busca} camposOcultos={{ prioridade, loja }} />
               </div>
               <OSLista
                 titulo="Aprovações Finais — Diretor/Dono"
@@ -363,7 +381,8 @@ export default async function Home({
           {usuario.papel === "despesas" && itensDespesas && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <CampoBusca busca={busca} />
+                <FiltroLojaSelect lojas={lojasParaFiltro} valor={loja} />
+                <CampoBusca busca={busca} camposOcultos={{ loja }} />
               </div>
               <OSLista titulo="Aguardando conferência de despesa" itens={itensDespesas} />
             </>
