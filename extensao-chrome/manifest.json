@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Mercadão O.S.",
   "short_name": "Mercadão O.S.",
-  "version": "1.0.0",
-  "description": "Veja e aprove O.S. pendentes sem precisar abrir o site inteiro.",
+  "version": "2.0.0",
+  "description": "Bolha flutuante com as O.S. pendentes de aprovação, visível em qualquer site - aprove sem precisar trocar de aba.",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Mercadão O.S.",
@@ -16,12 +16,16 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["widget.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "options_page": "options.html",
   "permissions": ["storage", "alarms", "cookies"],
-  "host_permissions": [
-    "http://localhost:3000/*",
-    "https://localhost:3000/*"
-  ],
+  "host_permissions": ["<all_urls>"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

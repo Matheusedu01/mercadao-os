@@ -33,8 +33,31 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === NOME_ALARME) atualizarBadge();
 });
 
-// O popup avisa o background quando uma decisão é tomada, pra atualizar
-// o número no ícone na hora, sem esperar os próximos 5 minutos.
-chrome.runtime.onMessage.addListener((mensagem) => {
-  if (mensagem?.tipo === "pendentes-mudaram") atualizarBadge();
+// O popup e o widget flutuante (content script, roda na página de fora -
+// não tem acesso direto à API por causa de CORS) avisam/pedem pro
+// background, que é quem de fato tem permissão pra buscar em qualquer
+// origem (host_permissions só vale pra páginas da extensão, não pra
+// content scripts).
+chrome.runtime.onMessage.addListener((mensagem, _remetente, enviarResposta) => {
+  if (mensagem?.tipo === "pendentes-mudaram") {
+    atualizarBadge();
+    return;
+  }
+
+  if (mensagem?.tipo === "widget-obter-pendentes") {
+    chamarApi("/api/extensao/pendentes").then(enviarResposta);
+    return true; // mantém o canal aberto pra resposta assíncrona
+  }
+
+  if (mensagem?.tipo === "widget-decidir") {
+    const { numero, decisao, comentario } = mensagem;
+    chamarApi("/api/extensao/decidir", {
+      method: "POST",
+      body: JSON.stringify({ numero, decisao, comentario }),
+    }).then((resultado) => {
+      atualizarBadge();
+      enviarResposta(resultado);
+    });
+    return true;
+  }
 });
