@@ -4,6 +4,8 @@ Sistema interno de ordens de serviço e aprovações, construído para uma rede 
 
 Toda solicitação de obra, manutenção ou despesa passa pelo mesmo fluxo, sem exceção por valor: **Solicitante → Supervisor → Diretor/Dono → Despesas**, com comparação de orçamentos de fornecedores, anexos, controle de SLA por prioridade, dashboards por papel e relatórios financeiros.
 
+**🔗 No ar:** [mercadao-os.onrender.com](https://mercadao-os.onrender.com) — banco de dados real (Neon), sem login público por enquanto. Se quiser testar, me chame que eu passo um acesso de demonstração.
+
 <p align="center">
   <img src="docs/screenshots/01-login.png" width="90%" alt="Tela de login">
 </p>
@@ -187,13 +189,13 @@ R2_BUCKET_NAME="..."
 
 ## Deploy em produção sem custo
 
-Combinação usada/planejada pra manter isso no ar de graça:
+Combinação usada pra manter isso no ar de graça:
 
-| Peça | Serviço | Observação |
+| Peça | Serviço | Status |
 |---|---|---|
-| App (Next.js) | [Render](https://render.com) (free web service) | Processo persistente, mais simples que serverless — dorme após inatividade no plano grátis |
-| Banco de dados | [Neon](https://neon.tech) (free tier Postgres) | Backup automático, plano gratuito generoso pra esse porte |
-| Anexos | [Cloudflare R2](https://developers.cloudflare.com/r2/) | Já suportado pelo código (ver variáveis acima) — sem taxa de saída, ao contrário do S3 |
+| App (Next.js) | [Render](https://render.com) (free web service) | ✅ No ar — processo persistente, dorme após inatividade no plano grátis |
+| Banco de dados | [Neon](https://neon.tech) (free tier Postgres) | ✅ Em uso — schema migrado e populado |
+| Anexos | [Cloudflare R2](https://developers.cloudflare.com/r2/) | ⏳ Suportado pelo código (variáveis `R2_*` acima), ainda não ativado — anexos em produção usam o disco do Render por enquanto |
 
 ## Extensão de navegador
 
