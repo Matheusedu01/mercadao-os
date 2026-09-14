@@ -8,6 +8,7 @@ import { OSLista } from "@/components/os-lista";
 import { PainelNav } from "@/components/painel-nav";
 import { FiltroLojaSelect } from "@/components/filtro-loja-select";
 import { ordenarPorCodigo } from "@/lib/lojas";
+import { filtroBuscaOS } from "@/lib/busca-os";
 import type { Prisma, Prioridade, StatusOS } from "@/generated/prisma/client";
 
 export const metadata: Metadata = { title: "Todas as O.S. — Mercadão O.S." };
@@ -62,7 +63,7 @@ export default async function TodasOSPage({
   const where: Prisma.OrdemServicoWhereInput = {
     ...(status && { status: status as StatusOS }),
     ...(prioridade && { prioridade: prioridade as Prioridade }),
-    ...(busca && { titulo: { contains: busca, mode: "insensitive" } }),
+    ...(busca && filtroBuscaOS(busca)),
     ...(loja && { lojaId: loja }),
   };
 

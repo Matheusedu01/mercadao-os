@@ -8,6 +8,7 @@ import { OSLista } from "@/components/os-lista";
 import { PainelNav } from "@/components/painel-nav";
 import { FiltroLojaSelect } from "@/components/filtro-loja-select";
 import { ordenarPorCodigo } from "@/lib/lojas";
+import { filtroBuscaOS } from "@/lib/busca-os";
 import type { Prisma, Prioridade } from "@/generated/prisma/client";
 
 const SELECT_LISTA = {
@@ -140,9 +141,7 @@ export default async function Home({
   const lojaIds = usuario.usuarioLojas.map((ul) => ul.loja.id);
 
   const { status = "", prioridade = "", busca = "", loja = "" } = await searchParams;
-  const filtroBusca: Prisma.OrdemServicoWhereInput = busca
-    ? { titulo: { contains: busca, mode: "insensitive" } }
-    : {};
+  const filtroBusca: Prisma.OrdemServicoWhereInput = busca ? filtroBuscaOS(busca) : {};
   const filtroPrioridade: Prisma.OrdemServicoWhereInput = prioridade
     ? { prioridade: prioridade as Prioridade }
     : {};
