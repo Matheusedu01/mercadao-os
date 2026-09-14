@@ -103,7 +103,7 @@ Cada papel tem sua própria tela inicial com dashboard e menu — nada de uma ú
 | Banco de dados | [PostgreSQL](https://www.postgresql.org) + [Prisma 7](https://www.prisma.io) (com driver adapter `@prisma/adapter-pg`) | Schema tipado, migrations versionadas, todas as relações (usuários, lojas, setores, O.S., orçamentos, aprovações, histórico, anexos) com integridade referencial |
 | Autenticação | Sessão própria via JWT assinado ([`jose`](https://github.com/panva/jose)) + senha com [`bcryptjs`](https://github.com/dcodeIO/bcrypt.js) | Implementação direta (sem NextAuth/Clerk) seguindo o padrão oficial de auth do Next.js — cookie httpOnly, checagem "otimista" no proxy e "segura" na Data Access Layer |
 | Validação | [Zod](https://zod.dev) | Validação de todo input de Server Action antes de tocar no banco |
-| Anexos | Sistema de arquivos local, servido por uma Route Handler autenticada | Cada download passa por checagem de permissão — não fica em `public/`, não tem URL adivinhável |
+| Anexos | Disco local em dev; [Cloudflare R2](https://developers.cloudflare.com/r2/) (S3-compatible) em produção, via [`aws4fetch`](https://github.com/kotx/aws4fetch) | Serve tudo por uma Route Handler autenticada (checagem de permissão a cada download); troca de armazenamento é só variável de ambiente, sem mudar código de quem chama |
 | Extensão | Chrome Manifest V3 (content script + service worker) | Content script injeta a UI em qualquer página via Shadow DOM (isolado do CSS do site); service worker é quem de fato tem `host_permissions` pra chamar a API sem CORS |
 
 ## Estrutura do projeto
@@ -173,6 +173,27 @@ npm run dev
 ```
 
 Abra [http://localhost:3000](http://localhost:3000). O seed cria um usuário de cada papel (senha `mercadao123` para todos) — os e-mails aparecem no terminal ao final do seed.
+
+### Variáveis de ambiente do R2 (opcionais)
+
+Sem essas variáveis, anexos vão pro disco local (`uploads/`) — bom pra desenvolvimento. Em produção "sem servidor fixo" (Vercel, Render free tier, etc.), o disco não é permanente, então é necessário configurar um bucket [Cloudflare R2](https://developers.cloudflare.com/r2/) (10GB grátis):
+
+```bash
+R2_ACCOUNT_ID="..."
+R2_ACCESS_KEY_ID="..."
+R2_SECRET_ACCESS_KEY="..."
+R2_BUCKET_NAME="..."
+```
+
+## Deploy em produção sem custo
+
+Combinação usada/planejada pra manter isso no ar de graça:
+
+| Peça | Serviço | Observação |
+|---|---|---|
+| App (Next.js) | [Render](https://render.com) (free web service) | Processo persistente, mais simples que serverless — dorme após inatividade no plano grátis |
+| Banco de dados | [Neon](https://neon.tech) (free tier Postgres) | Backup automático, plano gratuito generoso pra esse porte |
+| Anexos | [Cloudflare R2](https://developers.cloudflare.com/r2/) | Já suportado pelo código (ver variáveis acima) — sem taxa de saída, ao contrário do S3 |
 
 ## Extensão de navegador
 
