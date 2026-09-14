@@ -4,6 +4,23 @@ Sistema interno de ordens de serviço e aprovações, construído para uma rede 
 
 Toda solicitação de obra, manutenção ou despesa passa pelo mesmo fluxo, sem exceção por valor: **Solicitante → Supervisor → Diretor/Dono → Despesas**, com comparação de orçamentos de fornecedores, anexos, controle de SLA por prioridade, dashboards por papel e relatórios financeiros.
 
+<p align="center">
+  <img src="docs/screenshots/01-login.png" width="90%" alt="Tela de login">
+</p>
+
+---
+
+## Capturas de tela
+
+| | |
+|---|---|
+| ![Dashboard do Supervisor](docs/screenshots/02-dashboard-supervisor.png) | ![Detalhe da O.S.](docs/screenshots/03-detalhe-os.png) |
+| Dashboard do Supervisor — métricas, fila de aprovação com ação rápida | Detalhe da O.S. — trilha de aprovação, orçamentos comparados, histórico |
+| ![Abrir Nova O.S.](docs/screenshots/04-nova-os.png) | ![Usuários & Permissões](docs/screenshots/05-admin-usuarios.png) |
+| Abertura de O.S. — orçamentos comparados e anexos | Painel admin — usuários, papéis e escopo |
+| ![Relatórios Financeiros](docs/screenshots/06-relatorios.png) | |
+| Relatórios financeiros — despesas por loja/setor, status, período | |
+
 ---
 
 ## Índice
