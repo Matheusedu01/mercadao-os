@@ -68,6 +68,15 @@ export function LoginForm() {
       <p className="text-center text-xs text-text-3">
         Precisa de acesso? Fale com o administrador do sistema.
       </p>
+
+      <a
+        href="https://os.gestaomercadao.cloud"
+        target="_blank"
+        rel="noopener"
+        className="text-center text-xs font-semibold text-text-3 hover:text-orange-dark hover:underline"
+      >
+        ↗ Ir para o sistema antigo (histórico)
+      </a>
     </form>
   );
 }
