@@ -122,6 +122,15 @@ export function PainelNav({
         })}
       </nav>
 
+      <a
+        href="https://os.gestaomercadao.cloud"
+        target="_blank"
+        rel="noopener"
+        className="mx-3 mt-2 flex items-center gap-1.5 rounded-[9px] px-4 py-2.5 text-[12px] font-semibold text-[#6E7276] hover:text-white"
+      >
+        ↗ Sistema Antigo (histórico)
+      </a>
+
       <div className="mt-auto flex items-center gap-2.5 border-t border-white/10 px-5 py-4">
         <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-orange font-display text-[13px] font-bold text-white">
           {nome
